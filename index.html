@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="Description" content="Put your description here.">
+  <base href="/">
+  
+  <link rel="stylesheet" href="node_modules/@shoelace-style/shoelace/dist/themes/light.css">
+  <script src="https://cdn.polyfill.io/v3/polyfill.min.js?features=fetch,requestAnimationFrame,Element.prototype.classList,URL,TextDecoder,Number.isInteger"></script>
+
+  <script>
+    // HACK(keanulee): The Redux package assumes `process` exists - mock it here before
+// the module is loaded.
+window.process = {
+  env: {
+    NODE_ENV: 'production'
+  }
+};
+</script>
+
+  <style>
+    html,
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: sans-serif;
+      background-color: #ededed;
+    }
+  </style>
+  <title>stratux-ts</title>
+</head>
+
+<body>
+  <stratux-app></stratux-ts>
+
+  <script type="module" src="./out-tsc/src/stratux-app.js"></script>
+</body>
+
+</html>
