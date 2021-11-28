@@ -6,7 +6,10 @@ import { MySituationSocket } from './sockets/MySituationSocket.js';
 import { StratuxTraffic } from './traffic/StratuxTraffic.js';
 // import button from 'bulma/sass/elements/button.sass'
 // import bulma from 'bulma/css/bulma.css'
-// import style from './bulma.css';
+// import './bulma.css';
+// import './styles.css' // import the tailwind styles
+// import tailwind from 'lit-tailwindcss';
+import { bulmaStyles } from './utils/bulma.js';
 
 // const logo = new URL('../../assets/open-wc-logo.svg', import.meta.url).href;
 
@@ -19,9 +22,10 @@ export class StratuxTs extends LitElement {
 
   @property({ type: Object }) data = {};
 
-  router: Navigo;
+  router: Navigo = new Navigo('/', { hash: true });
 
   static styles = [
+    bulmaStyles,
     css`
       :host {
         min-height: 100vh;
@@ -50,7 +54,6 @@ export class StratuxTs extends LitElement {
   constructor() {
     super();
 
-    this.router = new Navigo('/', { hash: true });
     this.router.on('map', () => {
       this.route = html` <stratux-map></stratux-map>Map1`;
     });
@@ -111,19 +114,26 @@ export class StratuxTs extends LitElement {
         aria-label="main navigation"
         style="display:flex;justify-content:center;"
       >
-        <bw-button
-          class="button is-black"
+        <button
+          class="button is-light"
           @click="${() => this.router.navigate('all')}"
-          >All</bw-button
         >
-        <button class="button" @click="${() => this.router.navigate('radar')}">
+          All
+        </button>
+        <button
+          class="button is-light"
+          @click="${() => this.router.navigate('radar')}"
+        >
           Radar
         </button>
-        <button class="button" @click="${() => this.router.navigate('map')}">
+        <button
+          class="button is-light"
+          @click="${() => this.router.navigate('map')}"
+        >
           Map
         </button>
         <button
-          class="button"
+          class="button is-light"
           @click="${() => this.router.navigate('traffic')}"
         >
           Traffic

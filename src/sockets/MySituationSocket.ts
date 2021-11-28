@@ -60,10 +60,10 @@ export class MySituationSocket extends LitElement {
     this.websocket.onmessage = msg => {
       this.totalMessagesReceived += 1;
       const raw = JSON.parse(msg.data);
-      // emitter.emit('mySituation', this.mySituation)
+      this.mySituation = MySituationSocket._transformMySituation(raw);
+      emitter.emit('stratuxTime', this.mySituation.stratuxTime);
 
       if (raw.GPSFixQuality === 1) {
-        this.mySituation = MySituationSocket._transformMySituation(raw);
         emitter.emit('mySituation', this.mySituation);
       }
     };
@@ -73,7 +73,7 @@ export class MySituationSocket extends LitElement {
     setInterval(() => {
       // Updaten local display
       this.mySituation.trueCourse += 1;
-      emitter.emit('mySituation', this.mySituation);
+      //      emitter.emit('mySituation', this.mySituation);
     }, 1000);
   }
 

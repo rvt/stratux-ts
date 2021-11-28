@@ -5,8 +5,6 @@ import { importMetaAssets } from '@web/rollup-plugin-import-meta-assets';
 import { terser } from 'rollup-plugin-terser';
 import { generateSW } from 'rollup-plugin-workbox';
 import path from 'path';
-import litcss from 'rollup-plugin-lit-css';
-import Sass from 'sass';
 
 export default {
   input: 'index.html',
@@ -20,12 +18,6 @@ export default {
   preserveEntrySignatures: false,
 
   plugins: [
-    litcss({
-      include: '/**/*.scss',
-      transform: (data, { filePath }) =>
-        Sass.renderSync({ data, file: filePath })
-          .css.toString(),
-    }),
     /** Enable using HTML as rollup entrypoint */
     html({
       minify: true,

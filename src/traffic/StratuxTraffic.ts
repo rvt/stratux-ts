@@ -1,12 +1,18 @@
 import { html, LitElement } from 'lit';
-import { customElement, property } from 'lit/decorators.js';
+import { customElement } from 'lit/decorators.js';
 import { connect } from 'pwa-helpers';
+import { getVehicles } from '../redux/vehiclesSlice.js';
 import { emitter, TIME_MILLIS_AT_ZERO } from '../utils/utils.js';
 import { store } from '../redux/store.js';
+import { bulmaStyles } from '../utils/bulma.js';
+
 import {
+  formatAge,
   formatAlt,
   formatBearing,
+  formatDistance,
   formatDM,
+  formatSpeed,
   formatTail,
 } from '../utils/formatters.js';
 import { Vehicle } from '../types/vehicle.js';
@@ -19,65 +25,75 @@ export class StratuxTraffic extends connect(store)(LitElement) {
 
   private updateInterval: any;
 
-  @property({ type: Number }) stratuxTime = TIME_MILLIS_AT_ZERO;
+  private stratuxTime: number = TIME_MILLIS_AT_ZERO;
+  // private that:StratuxTraffic;
 
   static get scopedElements() {
     return {};
   }
 
+  static styles = [bulmaStyles];
+
+  private handleStratuxTime = (stratuxTime: any) => {
+    this.stratuxTime = stratuxTime;
+  };
+
   connectedCallback() {
     super.connectedCallback();
-    emitter.on('mySituation', (e: any) => {
-      this.stratuxTime = e.stratuxTime;
-    });
-
+    emitter.on('stratuxTime', this.handleStratuxTime);
     const TRAFFIC_UPDATE_INTERVAL = 500;
     this.updateInterval = setInterval(() => {
-      // Updaten local display
+      this.requestUpdate();
     }, TRAFFIC_UPDATE_INTERVAL);
   }
 
   disconnectedCallback() {
     super.disconnectedCallback();
     clearInterval(this.updateInterval);
+    emitter.off('stratuxTime', this.handleStratuxTime);
   }
 
   stateChanged(state: any) {
-    this.vehicles = state.vehicles.vehicles;
+    // const all vehicles = store.getState();
+    this.vehicles = getVehicles(state);
     this.filter = state.filter;
   }
 
   render() {
     const result = this.vehicles.map(
-      traffic => html` <tbody>
-        <tr>
-          <th>${formatTail(traffic.tail)}</th>
-          <th>${traffic.icaoAddr.toString(16).toUpperCase()}</th>
-          <th>${formatDM(traffic.latLon)}</th>
-          <th>${formatAlt(traffic.alt)}'</th>
-          <th>${traffic.speed}</th>
-          <th>${formatBearing(traffic.track)}</th>
-          <th>${traffic.signalLevel.toFixed(1)}</th>
-          <th>${((this.stratuxTime - traffic.lastSeen) / 1000).toFixed(1)}</th>
-        </tr>
-      </tbody>`
+      traffic => html` <tr>
+        <th>${formatTail(traffic.tail)}</th>
+        <th>${traffic.squawk}</th>
+        <th>${traffic.icaoAddr.toString(16).toUpperCase()}</th>
+        <th>${formatDM(traffic.latLon)}</th>
+        <th>${formatAlt(traffic.alt)}'</th>
+        <th>${formatSpeed(traffic.speed)}</th>
+        <th>${formatBearing(traffic.track)}</th>
+        <th>${formatDistance(traffic.distance)}</th>
+        <th>${traffic.signalLevel.toFixed(1)}</th>
+        <th>${formatAge(this.stratuxTime, traffic.lastSeen)}</th>
+      </tr>`
     );
+
     return html`
-      <button class="button">Button</button>
-      <table class="table">
+      <table class="table is-striped is-narrow is-hoverable is-fullwidth">
         <thead>
           <tr>
             <th>CallSign</th>
+            <th>Squawk</th>
             <th>Code</th>
             <th>Location</th>
             <th>Altitude</th>
             <th>Speed</th>
             <th>Course</th>
+            <th>Distance</th>
             <th>Power</th>
             <th>Age</th>
           </tr>
         </thead>
-        ${result}
+        <tbody>
+          ${result}
+        </tbody>
       </table>
     `;
   }

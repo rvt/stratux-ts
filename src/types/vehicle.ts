@@ -5,7 +5,7 @@ export interface Vehicle {
   icaoAddr: number;
   reg: number;
   tail: string;
-  squawk: number;
+  squawk: string;
 
   emitterCategory: number;
   surfaceVehicleType: number;

@@ -51,7 +51,7 @@ export class TrafficSocket extends connect(store)(LitElement) {
       icaoAddr: traffic.Icao_addr,
       reg: traffic.Reg,
       tail: traffic.Tail,
-      squawk: traffic.Squawk,
+      squawk: `${traffic.Squawk}`.padStart(4, '0'),
 
       emitterCategory: traffic.Emitter_category,
       surfaceVehicleType: traffic.SurfaceVehicleType,
@@ -88,7 +88,7 @@ export class TrafficSocket extends connect(store)(LitElement) {
     super.connectedCallback();
     const { ip, port } = this;
     this.websocket = new WebSocket(`ws://${ip}:${port}/traffic`);
-    //    this.websocket = new WebSocket(`ws://${ip}:${port}/radar`);
+    // this.websocket = new WebSocket(`ws://${ip}:${port}/radar`);
 
     this.websocket.onopen = () => {
       this.connected = true;

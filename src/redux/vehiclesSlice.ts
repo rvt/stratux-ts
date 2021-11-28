@@ -1,6 +1,7 @@
-import { createSlice, PayloadAction } from '@reduxjs/toolkit';
+import { createSelector, createSlice, PayloadAction } from '@reduxjs/toolkit';
 import { RootState } from './store.js';
 import { Vehicle } from '../types/vehicle.js';
+import { isTrafficAged } from '../utils/utils.js';
 
 export interface VehiclesState {
   vehicles: Array<Vehicle>;
@@ -12,7 +13,7 @@ const initialState: VehiclesState = {
   status: 'idle',
 };
 
-export const counterSlice = createSlice({
+export const vehiclesSlice = createSlice({
   name: 'vehicles',
   initialState,
   reducers: {
@@ -27,8 +28,19 @@ export const counterSlice = createSlice({
         state.vehicles.push(payload.payload);
       }
     },
-    cleanupAged: () => {
-      // state.vehicles = state.vehicles.filter(vehicle => !isTrafficAged(vehicle));
+    cleanupAged: state => {
+      // TODO: Perhaps use a better algorithm
+      // If isTrafficAged returns true before stratux removes it from his list
+      // then yiou will see vehicles disappearing and moments later
+      // re-appearing, this is because /traffix endpoint alwayts pushes the complete dataset
+      // A other strategy could be to keep track how long ago we get a update from stratux
+      // if we do not see traffic from stratux for XX seconds, we could also remove it from the list
+      // this might be more performant here
+      // redux shoudl always hold the single source of truth of what vehicles are beeing tracked
+      const list = state.vehicles.filter(vehicle => !isTrafficAged(vehicle));
+      const { length } = state.vehicles;
+      state.vehicles.splice(0, length);
+      list.forEach((vehicle: Vehicle) => state.vehicles.push(vehicle));
     },
   },
   // The `extraReducers` field lets the slice handle actions defined elsewhere,
@@ -45,7 +57,7 @@ export const counterSlice = createSlice({
   // },
 });
 
-export const { addvehicle, cleanupAged } = counterSlice.actions;
+export const { addvehicle, cleanupAged } = vehiclesSlice.actions;
 
 // The function below is called a selector and allows us to select a value from
 // the state. Selectors can also be defined inline where they're used instead of
@@ -64,22 +76,22 @@ export const selectVehicles = (state: RootState) => state.vehicles;
 //  }
 // };
 
-export default counterSlice.reducer;
+export default vehiclesSlice.reducer;
 
-// const getVehiclesSelector = state => state.vehicles;
-// const getFilterSelector = state => state.filter;
+// NOTE: We use reselect to cache the filtered vehicles. THis will reduce CPU load
+//       and ensures that we will only re-apply the filter when changed
+const getVehiclesSelector = (state: VehiclesState) => state.vehicles;
+const getFilterSelector = (state: VehiclesState) => state.status;
 
-// // NOTE: We use reselect to cache the filtered vehicles. THis will reduce CPU load
-// //       and ensures that we will only re-apply the filter when changed
-// export const getVehicles = createSelector(
-//   getVehiclesSelector,
-//   getFilterSelector,
-//   (vehicles, filter) => {
-//     switch (filter) {
-//       case VisibilityFilters.SHOW_POSITIONS_VALID:
-//         return vehicles.filter((v:Vehicle) => v.isPositionValid === true).sort((a:Vehicle, b:Vehicle) => a.distance - b.distance);
-//       default:
-//         return vehicles;
-//     }
-//   }
-// );
+export const getVehicles = createSelector(
+  getVehiclesSelector,
+  getFilterSelector,
+  (vehicles: any, filter) => {
+    switch (filter) {
+      default:
+        return vehicles.vehicles
+          .filter((v: Vehicle) => v.isPositionValid === true)
+          .sort((a: Vehicle, b: Vehicle) => a.distance - b.distance);
+    }
+  }
+);
