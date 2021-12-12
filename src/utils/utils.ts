@@ -22,3 +22,10 @@ export const isTrafficAged = (vehicle: Vehicle) => {
   }
   return ageMillieSeconds > TRAFFIC_MAX_AGE_MILLIS_ECONDS;
 };
+
+export const toRadians = (degrees: number): number =>
+  (degrees * Math.PI) / 180.0;
+
+export interface HashMap<T> {
+  [key: string]: T;
+}

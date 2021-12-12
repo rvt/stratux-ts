@@ -4,6 +4,8 @@ import { property } from 'lit/decorators.js';
 import { TrafficSocket } from './sockets/TrafficSocket.js';
 import { MySituationSocket } from './sockets/MySituationSocket.js';
 import { StratuxTraffic } from './traffic/StratuxTraffic.js';
+import { StratuxMap } from './views/StratuxMap.js';
+import { MainSettings } from './settings/MainSettings.js';
 // import button from 'bulma/sass/elements/button.sass'
 // import bulma from 'bulma/css/bulma.css'
 // import './bulma.css';
@@ -28,25 +30,22 @@ export class StratuxTs extends LitElement {
     bulmaStyles,
     css`
       :host {
-        min-height: 100vh;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: flex-start;
-        font-size: calc(10px + 2vmin);
+        font-size: calc(10px + 1vmin);
         color: #1a2b42;
         margin: 0 auto;
         text-align: center;
         background-color: var(--stratux-ts-background-color);
+        height: 100vh;
+        display: flex;
+        flex-direction: column;
       }
 
       main {
-        flex-grow: 1;
-        width: 100%;
-        background-color: #ffa0a0;
+        flex: 1;
+        display: flex;
       }
       main > * {
-        background-color: #a0ffa0;
+        flex: 1;
       }
     `,
   ];
@@ -55,15 +54,19 @@ export class StratuxTs extends LitElement {
     super();
 
     this.router.on('map', () => {
-      this.route = html` <stratux-map></stratux-map>Map1`;
+      this.route = html`<stratux-map></stratux-map>`;
     });
 
     this.router.on('traffic', () => {
-      this.route = html` <stratux-traffic></stratux-traffic>`;
+      this.route = html`<stratux-traffic></stratux-traffic>`;
     });
 
     this.router.on('radar', () => {
-      this.route = html` <radar-screen></radar-screen>Radar1`;
+      this.route = html`<radar-screen></radar-screen>Radar1`;
+    });
+
+    this.router.on('settings', () => {
+      this.route = html`<main-settings></main-settings>`;
     });
 
     // style="min-height:500px;width:100%;"
@@ -89,10 +92,6 @@ export class StratuxTs extends LitElement {
       `;
     });
 
-    this.router.on('settings', () => {
-      this.route = html` Settings `;
-    });
-
     this.router.on('*', () => {
       // this.route = html` <div>Homepage</div> `;
     });
@@ -104,6 +103,8 @@ export class StratuxTs extends LitElement {
       'traffic-socket': TrafficSocket,
       'mysituation-socket': MySituationSocket,
       'stratux-traffic': StratuxTraffic,
+      'main-settings': MainSettings,
+      'stratux-map': StratuxMap,
     };
   }
 
@@ -138,26 +139,26 @@ export class StratuxTs extends LitElement {
         >
           Traffic
         </button>
+        <button
+          class="button is-light"
+          @click="${() => this.router.navigate('settings')}"
+        >
+          Settings
+        </button>
         &nbsp;
       </nav>
-      <div></div>
-      <main>
-        <div style="display:flex; flex-direction: row">
-          <div style="flex: 1">
-            <traffic-socket
-              .ip=${'192.168.178.226'}
-              .port=${80}
-            ></traffic-socket>
-          </div>
-          <div style="flex: 1">
-            <mysituation-socket
-              .ip=${'192.168.178.226'}
-              .port=${80}
-            ></mysituation-socket>
-          </div>
+
+      <div style="display:flex;background-color:#a0a0ff">
+        <div style="flex: 1">
+          <traffic-socket></traffic-socket>
         </div>
-        ${this.route}
-      </main>
+        <div style="flex: 1">
+          <mysituation-socket></mysituation-socket>
+        </div>
+      </div>
+
+      <main>${this.route}</main>
     `;
   }
 }
+//

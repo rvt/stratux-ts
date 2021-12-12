@@ -15,7 +15,7 @@ export interface Vehicle {
   isPositionValid: boolean;
 
   latLon: LatLon;
-  lonLat: Array<number>; // Convenience for open layers and turf
+  lonLat: number[]; // Convenience for open layers and turf
   track: number;
   turnrate: number;
   speed: number;

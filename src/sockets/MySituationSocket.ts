@@ -3,6 +3,11 @@ import { property, customElement } from 'lit/decorators.js';
 import { formatDM } from '../utils/formatters.js';
 import { emitter, TIME_MILLIS_AT_ZERO } from '../utils/utils.js';
 import { MySituation } from '../types/mySituation.js';
+import { localSettingsService } from '../utils/localDb.js';
+import {
+  StratuxConnectionConfig,
+  defaultStratuxConnectionConfig,
+} from '../utils/models/StratuxConnectionConfig.js';
 
 // Perhaps we can use ReactiveController later on?
 @customElement('mysituation-socket')
@@ -16,6 +21,11 @@ export class MySituationSocket extends LitElement {
   @property({ type: Number }) totalMessagesReceived = 0;
 
   private websocket: WebSocket | undefined;
+
+  private reconnectInterval: any;
+
+  @property({ type: Object }) connectionConfig: StratuxConnectionConfig =
+    defaultStratuxConnectionConfig;
 
   private mySituation: MySituation = {
     stratuxTime: TIME_MILLIS_AT_ZERO,
@@ -47,15 +57,31 @@ export class MySituationSocket extends LitElement {
     };
   }
 
-  connectedCallback() {
-    super.connectedCallback();
-    this.websocket = new WebSocket(`ws://${this.ip}:${this.port}/situation`);
+  private async connect() {
+    if (this.connected) return;
+
+    await localSettingsService
+      .getStratuxConnectionConfig()
+      .then((event: StratuxConnectionConfig) => {
+        this.connectionConfig = event;
+      });
+
+    const { connectionConfig } = this;
+
+    this.websocket = new WebSocket(
+      `ws://${connectionConfig.ip}:${connectionConfig.port}/situation`
+    );
 
     this.websocket.onopen = () => {
       this.connected = true;
     };
     this.websocket.onclose = () => {
       this.connected = false;
+    };
+    this.websocket.onerror = () => {
+      if (this.websocket) this.websocket.close();
+      this.connected = false;
+      this.connect();
     };
     this.websocket.onmessage = msg => {
       this.totalMessagesReceived += 1;
@@ -67,6 +93,16 @@ export class MySituationSocket extends LitElement {
         emitter.emit('mySituation', this.mySituation);
       }
     };
+  }
+
+  connectedCallback() {
+    super.connectedCallback();
+
+    emitter.on('config.stratuxConnectionConfig.changed', () => {
+      if (this.websocket) this.websocket.close();
+      this.connected = false;
+      this.connect();
+    });
 
     // For testing
     // TODO: Need to removed untill we have a betetr way to simulate traffic
@@ -75,20 +111,33 @@ export class MySituationSocket extends LitElement {
       this.mySituation.trueCourse += 1;
       //      emitter.emit('mySituation', this.mySituation);
     }, 1000);
+
+    // For testing
+    // TODO: Need to removed untill we have a betetr way to simulate traffic
+    this.reconnectInterval = setInterval(() => {
+      // Reconnect if connection was dropped somehow
+      this.connect();
+    }, 5000);
+
+    // Immediatly connect
+    this.connect();
   }
 
   disconnectedCallback() {
     super.disconnectedCallback();
-    if (this.websocket && this.connected) {
+    const { connected, reconnectInterval } = this;
+
+    clearInterval(reconnectInterval);
+    if (this.websocket && connected) {
       this.websocket.close();
     }
   }
 
   render() {
-    const { ip, port, connected, totalMessagesReceived } = this;
+    const { connectionConfig, connected, totalMessagesReceived } = this;
     return html`
       <div class="info">
-        Listening on: ${ip}:${port}<br />
+        Listening on: ${connectionConfig.ip}:${connectionConfig.port}<br />
         Connected: ${connected ? 'true' : 'false'}<br />
         Total Messages: ${totalMessagesReceived}<br />
         Location: ${formatDM(this.mySituation.latLon)}

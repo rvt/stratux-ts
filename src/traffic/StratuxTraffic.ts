@@ -19,9 +19,7 @@ import { Vehicle } from '../types/vehicle.js';
 
 @customElement('stratux-traffic')
 export class StratuxTraffic extends connect(store)(LitElement) {
-  private vehicles: Array<Vehicle> = [];
-
-  private filter: string = '';
+  private vehicles: Vehicle[] = [];
 
   private updateInterval: any;
 
@@ -55,8 +53,7 @@ export class StratuxTraffic extends connect(store)(LitElement) {
 
   stateChanged(state: any) {
     // const all vehicles = store.getState();
-    this.vehicles = getVehicles(state);
-    this.filter = state.filter;
+    this.vehicles = getVehicles(state.vehicles);
   }
 
   render() {

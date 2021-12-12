@@ -5,7 +5,7 @@ import { importMetaAssets } from '@web/rollup-plugin-import-meta-assets';
 import { terser } from 'rollup-plugin-terser';
 import { generateSW } from 'rollup-plugin-workbox';
 import path from 'path';
-
+//import ignore from "rollup-plugin-ignore"
 export default {
   input: 'index.html',
   output: {
@@ -18,6 +18,7 @@ export default {
   preserveEntrySignatures: false,
 
   plugins: [
+//    ignore(["fs", "net"]),
     /** Enable using HTML as rollup entrypoint */
     html({
       minify: true,

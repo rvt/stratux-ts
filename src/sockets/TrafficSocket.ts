@@ -2,10 +2,20 @@ import { LitElement, html, css } from 'lit';
 import { property, customElement } from 'lit/decorators.js';
 import { connect } from 'pwa-helpers';
 import { store } from '../redux/store.js';
-import { TIME_MILLIS_AT_ZERO } from '../utils/utils.js';
+import { TIME_MILLIS_AT_ZERO, emitter } from '../utils/utils.js';
 import { Vehicle } from '../types/vehicle.js';
-
+import {
+  StratuxConnectionConfig,
+  defaultStratuxConnectionConfig,
+} from '../utils/models/StratuxConnectionConfig.js';
 import { addvehicle, cleanupAged } from '../redux/vehiclesSlice.js';
+import { localSettingsService } from '../utils/localDb.js';
+import Patrolling from '../thirdparty/patrolling/index.js';
+
+// We use a cash to push updayes into the application
+// THis is specially usefull when we need to handle a lot of traffic (>200 tracked)
+const CACH_BUFFER_SIZE: number = 50;
+const CACH_TIMEOUT_MS: number = 300;
 
 // Perhaps we can use ReactiveController later on?
 @customElement('traffic-socket')
@@ -13,10 +23,6 @@ export class TrafficSocket extends connect(store)(LitElement) {
   @property({ type: Array }) vehicles = [];
 
   @property({ type: String }) filter = '';
-
-  @property({ type: String }) ip = '127.0.0.1';
-
-  @property({ type: Number }) port = -1;
 
   @property({ type: Boolean }) connected = false;
 
@@ -29,6 +35,9 @@ export class TrafficSocket extends connect(store)(LitElement) {
   private cleanupInterval: any;
 
   private updateInterval: any;
+
+  @property({ type: Object }) connectionConfig: StratuxConnectionConfig =
+    defaultStratuxConnectionConfig;
 
   static get styles() {
     return css`
@@ -44,7 +53,7 @@ export class TrafficSocket extends connect(store)(LitElement) {
   }
 
   // TODO: Decide if we want to use https://github.com/typestack/class-transformer
-  private static _trafficToVehicleTransformer(traffic: any): Vehicle {
+  private static trafficToVehicleTransformer(traffic: any): Vehicle {
     return {
       id: `${traffic.Icao_addr}_${traffic.Addr_type}`,
 
@@ -60,7 +69,7 @@ export class TrafficSocket extends connect(store)(LitElement) {
       signalLevel: traffic.SignalLevel,
       isPositionValid: traffic.Position_valid,
 
-      lonLat: [traffic.Lat, traffic.Lng],
+      lonLat: [traffic.Lng, traffic.Lat],
       latLon: { lon: traffic.Lng, lat: traffic.Lat },
       track: traffic.Track,
       turnrate: traffic.TurnRate,
@@ -84,11 +93,21 @@ export class TrafficSocket extends connect(store)(LitElement) {
     };
   }
 
-  connectedCallback() {
-    super.connectedCallback();
-    const { ip, port } = this;
-    this.websocket = new WebSocket(`ws://${ip}:${port}/traffic`);
-    // this.websocket = new WebSocket(`ws://${ip}:${port}/radar`);
+  private async connect() {
+    if (this.connected) return;
+
+    await localSettingsService
+      .getStratuxConnectionConfig()
+      .then((event: StratuxConnectionConfig) => {
+        this.connectionConfig = event;
+      });
+
+    const { connectionConfig } = this;
+
+    this.websocket = new WebSocket(
+      `ws://${connectionConfig.ip}:${connectionConfig.port}/traffic`
+    );
+    // `ws://${connectionConfig.ip}:${connectionConfig.port}/radar`);
 
     this.websocket.onopen = () => {
       this.connected = true;
@@ -97,48 +116,78 @@ export class TrafficSocket extends connect(store)(LitElement) {
     this.websocket.onclose = () => {
       this.connected = false;
     };
+    this.websocket.onerror = () => {
+      if (this.websocket) this.websocket.close();
+      this.connected = false;
+      this.connect();
+    };
+
+    // We use Patrolling to only send updates after a X number of records where received or
+    // when a timeout accurent
+    // TODO: Also send out trafiic that appeared very close in range
+    let buffer: Vehicle[] = [];
+    const patrolling: Patrolling<Vehicle> = new Patrolling<Vehicle>(
+      CACH_BUFFER_SIZE,
+      CACH_TIMEOUT_MS,
+      () => {
+        store.dispatch(addvehicle(buffer));
+        buffer = [];
+      },
+      (element: Vehicle) => {
+        buffer.push(element);
+        return buffer.length;
+      }
+    );
 
     this.websocket.onmessage = msg => {
       this.totalMessagesReceived += 1;
-      const traffic = TrafficSocket._trafficToVehicleTransformer(
+      const traffic: Vehicle = TrafficSocket.trafficToVehicleTransformer(
         JSON.parse(msg.data)
       );
+      // Fixed a weird bug from radar, I think this was a config record??
+      // that had undefined traffic
       if (traffic.icaoAddr) {
-        // Fixed a weird bug from radar that had undefined traffic
-        store.dispatch(addvehicle(traffic));
+        patrolling.push(traffic);
       }
     };
+  }
 
-    // Every XX seconds tell to update vehicles
-    // const STRATUX_UPDATE_INTERVAL = 1000;
-    // this.updateInterval = setInterval(() => {
-    //   // Updaten local display
-    //   this._date = new Date();
-    //   emitter.emit('vehicles.position.updated', true)
-    // }, STRATUX_UPDATE_INTERVAL);
+  connectedCallback() {
+    super.connectedCallback();
+
+    emitter.on('config.stratuxConnectionConfig.changed', () => {
+      if (this.websocket) this.websocket.close();
+      this.connected = false;
+      this.connect();
+    });
 
     // Every XX seconds cleanup agaed traffic
     this.cleanupInterval = setInterval(() => {
       store.dispatch(cleanupAged());
+      // Reconnect if connection was dropped somehow
+      this.connect();
     }, 5000);
+
+    // Immediatly connect
+    this.connect();
   }
 
   disconnectedCallback() {
     super.disconnectedCallback();
-    const { connected, updateInterval, cleanupInterval } = this;
+    const { connected, cleanupInterval } = this;
 
-    clearInterval(updateInterval);
     clearInterval(cleanupInterval);
-    if (connected && this.websocket && this.connected) {
+    if (connected && this.websocket) {
       this.websocket.close();
     }
   }
 
   render() {
-    const { ip, port, connected, totalMessagesReceived, vehicles } = this;
+    const { connectionConfig, connected, totalMessagesReceived, vehicles } =
+      this;
     return html`
       <div class="info">
-        Listening on: ${ip}:${port}<br />
+        Listening on: ${connectionConfig.ip}:${connectionConfig.port}<br />
         Connected: ${connected ? 'true' : 'false'}<br />
         Total Messages: ${totalMessagesReceived}<br />
         Total tracked: ${vehicles.length}

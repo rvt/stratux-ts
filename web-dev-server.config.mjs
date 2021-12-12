@@ -3,6 +3,7 @@
 /** Use Hot Module replacement by adding --hmr to the start command */
 const hmr = process.argv.includes('--hmr');
 
+// https://modern-web.dev/docs/dev-server/overview/
 export default /** @type {import('@web/dev-server').DevServerConfig} */ ({
   open: '/',
   watch: !hmr,

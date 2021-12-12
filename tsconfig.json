@@ -6,7 +6,7 @@
     "noEmitOnError": true,
     "lib": ["es2017", "dom"],
     "strict": true,
-    "esModuleInterop": false,
+    "esModuleInterop": true, // true for localForage ??
     "allowSyntheticDefaultImports": true,
     "experimentalDecorators": true,
     "useDefineForClassFields":false,
@@ -16,7 +16,8 @@
     "inlineSources": true,
     "rootDir": "./",
     "incremental": true,
-    "skipLibCheck": true // Fix for openlayers
+    "skipLibCheck": true, // Fix for openlayers
+    "typeRoots": ["node_modules/@types"],
   },
-  "include": ["**/*.ts"]
+  "include": ["**/*.ts"],
 }
